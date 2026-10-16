@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>VYRO Admin</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#09090b;color:#f4f4f5;font:15px system-ui,sans-serif}
+main{max-width:1050px;margin:auto;padding:22px}.brand{font-size:30px;font-weight:900;color:#ff2d55}
+.card{background:#18181b;border:1px solid #303036;border-radius:16px;padding:18px;margin:14px 0}
+input,button,textarea{font:inherit;border-radius:10px;padding:11px;border:1px solid #444;background:#111113;color:#fff;width:100%;margin:5px 0}
+button{background:#ff2d55;border:0;font-weight:700;cursor:pointer}button.secondary{background:#303036}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.item{border-top:1px solid #333;padding:14px 0;overflow-wrap:anywhere}.muted{color:#a1a1aa}.danger{background:#991b1b}
+@media(max-width:650px){.row{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main>
+<div class="brand">VYRO <span style="color:#fff;font-size:16px">ADMIN</span></div>
+<p class="muted">Panel moderasi sederhana. Gunakan Project URL, publishable key, dan access token akun admin. Jangan pernah memasukkan service-role key di browser.</p>
+<div class="card">
+<h2>Koneksi Supabase</h2>
+<input id="url" placeholder="https://PROJECT.supabase.co">
+<input id="key" placeholder="Publishable key / anon key">
+<textarea id="token" rows="3" placeholder="Access token akun admin (rahasia; jangan bagikan)"></textarea>
+<button onclick="save()">Simpan di sesi browser</button>
+<button class="secondary" onclick="loadVideos()">Muat video</button>
+<button class="secondary" onclick="loadReports()">Muat laporan</button>
+<p id="status" class="muted"></p>
+</div>
+<div class="card"><h2>Video</h2><div id="videos"></div></div>
+<div class="card"><h2>Laporan</h2><div id="reports"></div></div>
+<script>
+const $=id=>document.getElementById(id);
+function cfg(){return {url:$('url').value.trim().replace(/\/$/,''),key:$('key').value.trim(),token:$('token').value.trim()}}
+function save(){const c=cfg();if(!c.url.startsWith('https://')||!c.key||!c.token){$('status').textContent='Lengkapi semua kolom.';return}sessionStorage.setItem('vyro_cfg',JSON.stringify(c));$('status').textContent='Konfigurasi disimpan sementara di sesi ini.'}
+function get(){try{const c=JSON.parse(sessionStorage.getItem('vyro_cfg')||'{}');if(!$('url').value)$('url').value=c.url||'';if(!$('key').value)$('key').value=c.key||'';if(!$('token').value)$('token').value=c.token||''}catch(e){}return cfg()}
+async function api(path,method='GET',body){const c=get();if(!c.url||!c.key||!c.token)throw Error('Isi konfigurasi terlebih dahulu');const r=await fetch(c.url+path,{method,headers:{apikey:c.key,Authorization:'Bearer '+c.token,'Content-Type':'application/json',Prefer:'return=representation'},body:body?JSON.stringify(body):undefined});const t=await r.text();if(!r.ok)throw Error(t);return t?JSON.parse(t):[]}
+async function loadVideos(){try{const a=await api('/rest/v1/videos?select=id,caption,status,video_url,user_id,created_at&order=created_at.desc&limit=100');$('videos').innerHTML=a.map(v=>`<div class="item"><b>${esc(v.caption||'(tanpa caption)')}</b><p class="muted">${esc(v.status)} · ${esc(v.user_id)}</p><a href="${esc(v.video_url)}" target="_blank" rel="noreferrer">Buka video</a><div class="row"><button onclick="moderate('${v.id}','hidden')">Sembunyikan</button><button class="secondary" onclick="moderate('${v.id}','published')">Publikasikan</button></div></div>`).join('')||'Belum ada video.';$('status').textContent='Video dimuat.'}catch(e){$('status').textContent='Gagal: '+e.message}}
+async function moderate(id,status){try{await api('/rest/v1/videos?id=eq.'+encodeURIComponent(id),'PATCH',{status});await loadVideos()}catch(e){$('status').textContent='Gagal moderasi: '+e.message}}
+async function loadReports(){try{const a=await api('/rest/v1/reports?select=id,reason,status,video_id,reported_user_id,created_at&order=created_at.desc&limit=100');$('reports').innerHTML=a.map(v=>`<div class="item"><b>${esc(v.reason)}</b><p class="muted">Status: ${esc(v.status)} · Video: ${esc(v.video_id||'-')} · Akun: ${esc(v.reported_user_id||'-')}</p><button onclick="resolve('${v.id}')">Tandai selesai</button></div>`).join('')||'Belum ada laporan.'}catch(e){$('status').textContent='Gagal memuat laporan: '+e.message}}
+async function resolve(id){try{await api('/rest/v1/reports?id=eq.'+encodeURIComponent(id),'PATCH',{status:'resolved'});await loadReports()}catch(e){$('status').textContent='Gagal: '+e.message}}
+function esc(s){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+</script></main></body></html>
