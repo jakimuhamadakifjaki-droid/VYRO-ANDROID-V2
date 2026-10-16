@@ -174,7 +174,7 @@ fun VyroApp() {
                         Text(api.email ?: "Profil VYRO", fontSize = 22.sp, fontWeight = FontWeight.Bold)
                         Text("Video yang kamu bagikan akan muncul di feed publik.", color = Color.LightGray)
                         Spacer(Modifier.height(20.dp))
-                        Button(onClick = { runTask({ api.signOut() }, { loggedIn = false }) }) { Text("Keluar") }
+                        Button(onClick = { runTask({ api.signOut(); "Berhasil keluar." }, { loggedIn = false }) }) { Text("Keluar") }
                         Text(message, color = Color.LightGray, fontSize = 12.sp)
                     }
                     else -> {
