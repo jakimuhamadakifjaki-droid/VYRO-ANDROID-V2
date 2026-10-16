@@ -111,7 +111,7 @@ class SupabaseApi(private val context: Context) {
 
     fun feed(search: String = ""): List<VyroVideo> {
         val q = if (search.isBlank()) "" else "&caption=ilike.*${URLEncoder.encode(search, "UTF-8")}*"
-        val json = request("GET", "/rest/v1/videos?select=id,user_id,caption,video_url,like_count,comment_count,profiles(username)&status=eq.published&order=created_at.desc&limit=40$q")
+        val json = request("GET", "/rest/v1/videos?select=id,user_id,caption,video_url,like_count,comment_count&status=eq.published&order=created_at.desc&limit=40$q")
         val arr = JSONArray(json)
         return (0 until arr.length()).map { i ->
             val o = arr.getJSONObject(i)
